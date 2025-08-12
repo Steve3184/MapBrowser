@@ -1,0 +1,35 @@
+# --------------------------------------------------- #
+#             MapBrowser Configuration                #
+# --------------------------------------------------- #
+
+jcef:
+  # Your custom JCEF binaries path (leave blank to disable)
+  # Default: (plguins)/MapBrowser/jcef-bundle
+  custom-install-path: ""
+  # Custom jcef-maven download mirror (for custom-builds)
+  mirror: "https://git.s3.fan/Steve3184/MapBrowser-jcefbuild/releases/download/latest/"
+  # Should jcef-maven check the JCEF binaries at startup?
+  skip-download: false
+
+browser:
+  # Should we enable the sound (default is false)
+  enable-sound: false
+  # CEF's user data directory
+  # Default: (plugins)/MapBrowser/userdata
+  user-data-dir: "userdata"
+  # CEF's remote debugging
+  remote-debugging:
+    enabled: false
+    # Should we enable it? (default is false)
+    port: 9222
+    # Remote Debugging Port (default is 9222)
+  # CEF's User-Agent
+  user-agent: ""
+  # Where should CEF output the log
+  # 'file' -> write to (plugins)/MapBrowser/cef.log
+  # 'console' -> write to console
+  chrome-log-output: "file"
+  # Extra CEF startup args
+  custom-chrome-args:
+    - "--disable-gpu-compositing"
+    - "--disable-gpu-vsync"

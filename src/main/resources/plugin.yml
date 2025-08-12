@@ -1,0 +1,64 @@
+name: MapBrowser
+version: '1.0'
+main: top.steve3184.mapbrowser.MapBrowser
+api-version: '1.20'
+prefix: MapBrowser
+authors: [ Steve3184 ]
+description: Chromium Browser on maps
+depend: [MapEngine]
+commands:
+  mapbrowser:
+    description: Main command for the MapBrowser plugin.
+    aliases: [mb]
+    permission: mapbrowser.command.base 
+    permission-message: You do not have permission to use MapBrowser commands.
+permissions:
+  mapbrowser.command.*:
+    description: Grants access to all MapBrowser commands.
+    default: op
+    children:
+      mapbrowser.command.base: true
+      mapbrowser.command.create: true
+      mapbrowser.command.list: true
+      mapbrowser.command.remove: true
+      mapbrowser.command.modify: true
+      mapbrowser.command.input: true
+      mapbrowser.command.keys: true
+      mapbrowser.command.executejs: true
+      mapbrowser.command.near: true
+
+  mapbrowser.command.base:
+    description: Allows using the base /mapbrowser command (e.g., for help).
+    default: true
+
+  mapbrowser.command.create:
+    description: Allows creating new browser displays.
+    default: op
+
+  mapbrowser.command.list:
+    description: Allows listing all browser displays.
+    default: op
+
+  mapbrowser.command.remove:
+    description: Allows removing browser displays.
+    default: op
+
+  mapbrowser.command.modify:
+    description: Allows modifying browser displays.
+    default: op
+  
+  mapbrowser.command.input:
+    description: Allows sending text input to browser displays.
+    default: op
+
+  mapbrowser.command.keys:
+    description: Allows sending key events to browser displays.
+    default: op
+
+  mapbrowser.command.executejs:
+    description: Allows execute custom JavaScript in browser displays.
+    default: op
+
+  mapbrowser.command.near:
+    description: Allows listing nearest browser displays.
+    default: op
