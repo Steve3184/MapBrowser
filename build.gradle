@@ -5,7 +5,7 @@ plugins {
 }
 
 group = 'top.steve3184.mapbrowser'
-version = '1.0'
+version = '1.0-beta2'
 
 repositories {
     mavenCentral()
@@ -28,7 +28,6 @@ dependencies {
     compileOnly("de.pianoman911:mapengine-api:1.8.9")
     implementation("me.friwi:jcefmaven:116.0.19.1")
     implementation("me.friwi:jcef-api:jcef-37f25dc+cef-116.0.19+gc6a20bc+chromium-116.0.5845.141")
-    // implementation("me.friwi:jcef-natives-linux-amd64:jcef-87476e9+cef-110.0.25+g75b1c96+chromium-110.0.5481.78")
 }
 
 tasks {
@@ -59,11 +58,9 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 processResources {
-    def props = [version: version]
-    inputs.properties props
     filteringCharset 'UTF-8'
     filesMatching('plugin.yml') {
-        expand props
+        expand(project.properties)
     }
 }
 build {

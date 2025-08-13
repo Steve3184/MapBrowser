@@ -48,8 +48,11 @@ public class JCEFManager {
         String platformIdentifier = getPlatformIdentifier();
         CefAppBuilder builder = new CefAppBuilder();
         builder.setProgressHandler(new FancyProgressHandler(LOGGER));
+
+        // --- Configure JCEF Download Mirror ---
         String mirrorBaseUrl = config.getJcefMirror();
-        if (mirrorBaseUrl != null && !mirrorBaseUrl.trim().isEmpty() || platformIdentifier == null) {
+        // Use custom mirror only if the URL is provided AND the platform is supported.
+        if (mirrorBaseUrl != null && !mirrorBaseUrl.trim().isEmpty() && platformIdentifier != null) {
             if (!mirrorBaseUrl.endsWith("/")) {
                 mirrorBaseUrl += "/";
             }
@@ -57,17 +60,19 @@ public class JCEFManager {
             LOGGER.info("Using custom JCEF download url: " + finalDownloadUrl);
             builder.setMirrors(Collections.singleton(finalDownloadUrl));
         } else {
+            // Fallback to default repository if no mirror is set or platform is unsupported.
+            if (platformIdentifier == null) {
+                LOGGER.warning("Unsupported platform detected. Falling back to the default JCEF download repository.");
+            }
             LOGGER.info("Using default JCEF download repository.");
         }
+
         // --- Configure JCEF Installation Path ---
         String customPath = config.getCustomJcefPath();
         if (customPath != null && !customPath.trim().isEmpty()) {
             File customDir = new File(customPath);
             if (customDir.exists() && customDir.isDirectory()) {
                 builder.setInstallDir(customDir);
-                if (config.getIsSkipDownload()) {
-                    builder.setSkipInstallation(true); // Use existing installation.
-                }
                 LOGGER.info("Using custom JCEF path: " + customPath);
             } else {
                 LOGGER.warning("Invalid custom JCEF path: " + customPath + ". Falling back to default.");
@@ -76,6 +81,10 @@ public class JCEFManager {
         } else {
             builder.setInstallDir(new File(dataFolder, "jcef-bundle"));
             LOGGER.info("Using default JCEF installation path.");
+        }
+
+        if (config.getIsSkipDownload()) {
+            builder.setSkipInstallation(true); // Use existing installation.
         }
 
         // --- Configure User Data and Logging ---
@@ -181,18 +190,34 @@ public class JCEFManager {
         return new MapBrowserInstance(cefClient, url);
     }
 
+    /**
+     * Determines the platform identifier string based on OS and architecture.
+     * This is used to construct the download URL for the JCEF bundle.
+     *
+     * @return A platform-specific string (e.g., "windows_amd64") or null if the platform is unsupported.
+     */
     private String getPlatformIdentifier() {
         String os = System.getProperty("os.name").toLowerCase();
         String arch = System.getProperty("os.arch").toLowerCase();
 
-        if (arch.equals("amd64")) {
-            if (os.contains("win")) {
+        if (os.contains("win")) {
+            if (arch.equals("amd64")) {
                 return "windows_amd64";
             }
-            if (os.contains("nix") || os.contains("nux") || os.contains("aix")) {
+            if (arch.equals("i386")) {
+                return "windows_i386";
+            }
+        } else if (os.contains("nix") || os.contains("nux") || os.contains("aix")) { // For Linux-based systems
+            if (arch.equals("amd64")) {
                 return "linux_amd64";
             }
+            // "aarch64" is a common name for the 64-bit ARM architecture.
+            if (arch.equals("arm64") || arch.equals("aarch64")) {
+                return "linux_arm64";
+            }
         }
-        return null; // Unsupport Platform
+        // Return null for unsupported platforms (e.g., macOS, 32-bit Linux)
+        // to trigger fallback to the default download repository.
+        return null;
     }
 }

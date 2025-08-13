@@ -1,11 +1,11 @@
 name: MapBrowser
-version: '1.0'
+version: '1.0-beta2'
 main: top.steve3184.mapbrowser.MapBrowser
 api-version: '1.20'
 prefix: MapBrowser
 authors: [ Steve3184 ]
 description: Chromium Browser on maps
-depend: [MapEngine]
+depend: [ MapEngine ]
 commands:
   mapbrowser:
     description: Main command for the MapBrowser plugin.
