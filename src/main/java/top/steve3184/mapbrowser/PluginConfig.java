@@ -21,7 +21,7 @@ public class PluginConfig {
     public PluginConfig(FileConfiguration config) {
         this.customJcefPath = config.getString("jcef.custom-install-path", "");
         this.isSkipDownload = config.getBoolean("jcef.skip-download", false);
-        this.jcefMirror = config.getString("jcef.mirror", "");
+        this.jcefMirror = config.getString("jcef.mirror", "https://github.com/Steve3184/mb_jcefbuild/releases/download/v1/");
         this.userAgent = config.getString("browser.user-agent", "");
         this.remoteDebuggingEnabled = config.getBoolean("browser.remote-debugging.enabled", false);
         this.remoteDebuggingPort = config.getInt("browser.remote-debugging.port", 9222);

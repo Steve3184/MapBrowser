@@ -2,10 +2,11 @@ plugins {
     id 'java'
     id("xyz.jpenilla.run-paper") version "2.3.1"
     id 'com.gradleup.shadow' version '8.3.0'
+    id "de.undercouch.download" version "5.6.0"
 }
 
 group = 'top.steve3184.mapbrowser'
-version = '1.0-beta2'
+version = '1.0-beta3'
 
 repositories {
     mavenCentral()
@@ -22,14 +23,22 @@ repositories {
         name = 'tjcserver'
     }
 }
-
+task downloadJcef(type: Download) {
+    src 'https://github.com/Steve3184/mb_jcefbuild/releases/download/v1/jcef.jar'
+    dest new File(layout.buildDirectory.get().toString(), 'libs/jcef.jar')
+    overwrite false
+}
+tasks.withType(JavaCompile).configureEach {
+    dependsOn downloadJcef
+}
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.5-R0.1-SNAPSHOT")
     compileOnly("de.pianoman911:mapengine-api:1.8.9")
-    implementation("me.friwi:jcefmaven:116.0.19.1")
-    implementation("me.friwi:jcef-api:jcef-37f25dc+cef-116.0.19+gc6a20bc+chromium-116.0.5845.141")
+    // implementation("me.friwi:jcefmaven:116.0.19.1")
+    implementation("me.friwi:jcefmaven:135.0.20")
+    // implementation("me.friwi:jcef-api:jcef-37f25dc+cef-116.0.19+gc6a20bc+chromium-116.0.5845.141")
+    implementation files(downloadJcef.dest)
 }
-
 tasks {
     runServer {
         // Configure the Minecraft version for our task.

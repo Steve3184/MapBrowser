@@ -43,6 +43,7 @@ public class MapBrowserDisplay {
     private BlockFace facing; // The direction the item frames are facing.
 
     private volatile int[] lastPixelData = null; // The last pixel frame data
+    private int scale;
     /**
      * Constructs a new MapBrowserDisplay with its initial properties.
      *
@@ -58,6 +59,7 @@ public class MapBrowserDisplay {
         this.location = location;
         this.width = width;
         this.height = height;
+        this.scale = 1;
     }
 
     public int getId() { return id; }
@@ -65,6 +67,7 @@ public class MapBrowserDisplay {
     public Location getLocation() { return location; }
     public int getWidth() { return width; }
     public int getHeight() { return height; }
+    public int getScale() { return scale; }
     public MapBrowserInstance getBrowser() { return browser; }
 
     public BukkitTask getRenderTask() { return this.renderTask; }
@@ -78,6 +81,7 @@ public class MapBrowserDisplay {
     public void setLocation(Location location) { this.location = location; }
     public void setWidth(int width) { this.width = width; }
     public void setHeight(int height) { this.height = height; }
+    public void setScale(int scale) { this.scale = scale; }
     public void setBrowser(MapBrowserInstance browser) { this.browser = browser; }
     public void setRenderTask(BukkitTask renderTask) { this.renderTask = renderTask; }
     public void setCornerA(BlockVector cornerA) { this.cornerA = cornerA; }

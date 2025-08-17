@@ -1,13 +1,15 @@
 package org.cef.browser;
 
+import org.cef.CefBrowserSettings;
 import org.cef.CefClient;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -32,6 +34,22 @@ public class MapBrowserInstance extends CefBrowserOsr {
     private MapBrowserInstance devToolsBrowser = null;
     // Flag indicating if the developer tools are currently open and should be rendered.
     private boolean isDevToolsOpen = false;
+    private final ExecutorService clickExecutor = Executors.newSingleThreadExecutor();
+
+    /**
+     * Defines the types of virtual events that can be sent to the browser.
+     */
+    public enum InputEventType {
+        MOUSE_MOVE,
+        MOUSE_LEFT_CLICK,
+        MOUSE_MIDDLE_CLICK,
+        MOUSE_RIGHT_CLICK,
+        TOUCH_CLICK,
+        TOUCH_MOVE,
+        TOUCH_PRESS,
+        TOUCH_RELEASE
+    }
+
 
     /**
      * Public constructor for a main browser instance.
@@ -39,7 +57,7 @@ public class MapBrowserInstance extends CefBrowserOsr {
      * @param url The initial URL to load.
      */
     public MapBrowserInstance(CefClient client, String url) {
-        super(client, url, false, null); // `isTransparent` is false.
+        super(client, url, false, null, new CefBrowserSettings()); // `isTransparent` is false.
     }
 
     /**
@@ -47,7 +65,7 @@ public class MapBrowserInstance extends CefBrowserOsr {
      * It uses reflection to set internal fields required for linking to a parent browser.
      */
     private MapBrowserInstance(CefClient client, String url, boolean transparent, CefRequestContext context, CefBrowser_N parent, Point inspectAt) {
-        super(client, url, transparent, context);
+        super(client, url, transparent, context, new CefBrowserSettings());
         // Use reflection to set private fields in the parent CefBrowser_N class.
         try {
             Field parentField = CefBrowser_N.class.getDeclaredField("parent_");
@@ -174,8 +192,7 @@ public class MapBrowserInstance extends CefBrowserOsr {
             if (open) {
                 // Create and initialize the DevTools browser if it doesn't exist.
                 if (devToolsBrowser == null) {
-                    devToolsBrowser = (MapBrowserInstance) this.getDevTools(null);
-
+                    devToolsBrowser = createDevToolsBrowser(this.getClient(), this.getUrl(), this.getRequestContext(), this, (Point)null);
                     // Initialization must happen on the AWT event dispatch thread.
                     SwingUtilities.invokeLater(() -> {
                         devToolsBrowser.createImmediately();
@@ -263,15 +280,177 @@ public class MapBrowserInstance extends CefBrowserOsr {
                 return;
             }
         }
-        // Simulate a press followed by a release to form a click.
-        MouseEvent move = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, x, y, 0, false);
-        sendMouseEvent(move);
-        MouseEvent press = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, x, y, 1, false, awtButtonType);
-        sendMouseEvent(press);
-
-        MouseEvent release = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_RELEASED, System.currentTimeMillis() + 20, 0, x, y, 1, false, awtButtonType);
-        sendMouseEvent(release);
+        clickExecutor.submit(() -> {
+            MouseEvent move = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0, x, y, 0, false);
+            sendMouseEvent(move);
+            try {
+                MouseEvent click = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, x, y, 1, false, awtButtonType);
+                sendMouseEvent(click);
+                Thread.sleep(1);
+                MouseEvent press = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, x, y, 1, false, awtButtonType);
+                sendMouseEvent(press);
+                Thread.sleep(1);
+                MouseEvent release = new MouseEvent(getUIComponent(), MouseEvent.MOUSE_RELEASED, System.currentTimeMillis(), 0, x, y, 1, false, awtButtonType);
+                sendMouseEvent(release);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
     }
+
+    /**
+     * Sends a virtual event to the browser at a specific position.
+     * This can be a mouse movement, button press/release, or a touch event.
+     * Delegates to DevTools if open.
+     *
+     * @param eventType The type of event to send.
+     * @param x The x-coordinate for the event.
+     * @param y The y-coordinate for the event.
+     */
+    public void sendVirtualEvent(InputEventType eventType, int x, int y) {
+        synchronized (devToolsLock) {
+            if (isDevToolsOpen && devToolsBrowser != null) {
+                devToolsBrowser.sendVirtualEvent(eventType, x, y);
+                return;
+            }
+        }
+
+        switch (eventType) {
+            case MOUSE_MOVE:
+                executeMouseEventJS("mousemove", x, y, -1); // For mouse move, button is not relevant, use -1
+                break;
+            case MOUSE_LEFT_CLICK:
+                // A click is a sequence of mousedown and mouseup
+                executeMouseEventJS("mousedown", x, y, 0); // 0 for left button
+                executeMouseEventJS("mouseup", x, y, 0);
+                executeMouseEventJS("click", x, y, 0);
+                break;
+            case MOUSE_MIDDLE_CLICK:
+                executeMouseEventJS("mousedown", x, y, 1); // 1 for middle button
+                executeMouseEventJS("mouseup", x, y, 1);
+                executeMouseEventJS("click", x, y, 1);
+                break;
+            case MOUSE_RIGHT_CLICK:
+                executeMouseEventJS("mousedown", x, y, 2); // 2 for right button
+                executeMouseEventJS("mouseup", x, y, 2);
+                executeMouseEventJS("contextmenu", x, y, 2); // Right click often triggers contextmenu
+                break;
+
+            case TOUCH_CLICK:
+                executeTouchEventJS("touchstart", x, y);
+                executeTouchEventJS("touchend", x, y);
+                break;
+            case TOUCH_PRESS:
+                executeTouchEventJS("touchstart", x, y);
+                break;
+            case TOUCH_MOVE:
+                executeTouchEventJS("touchmove", x, y);
+                break;
+            case TOUCH_RELEASE:
+                executeTouchEventJS("touchend", x, y);
+                break;
+        }
+    }
+
+    private void executeMouseEventJS(String eventType, int x, int y, int button) {
+        // (function() {
+        //     var el = document.elementFromPoint(%d, %d);
+        //     if (!el) return;
+        //     var mouseEventType = '%s';
+        //     var buttonType = %d;
+        //
+        //     var eventOptions = {
+        //         bubbles: true,
+        //         cancelable: true,
+        //         composed: true,
+        //         clientX: %d,
+        //         clientY: %d,
+        //         button: buttonType,
+        //         buttons: buttonType === 0 ? 1 : (buttonType === 1 ? 4 : 2) // Primary, Auxiliary, Secondary
+        //     };
+        //
+        //     el.dispatchEvent(new MouseEvent(mouseEventType, eventOptions));
+        //
+        //     var pointerType = 'mouse';
+        //     var primaryPointerType;
+        //     if (mouseEventType === 'mousedown') {
+        //         primaryPointerType = 'pointerdown';
+        //     } else if (mouseEventType === 'mouseup') {
+        //         primaryPointerType = 'pointerup';
+        //     } else {
+        //         primaryPointerType = 'pointermove';
+        //     }
+        //
+        //     var pointerEventOptions = {
+        //         bubbles: true,
+        //         cancelable: true,
+        //         composed: true,
+        //         clientX: %d,
+        //         clientY: %d,
+        //         pointerType: pointerType,
+        //         isPrimary: true,
+        //         button: buttonType
+        //     };
+        //
+        //     el.dispatchEvent(new PointerEvent(primaryPointerType, pointerEventOptions));
+        // })();
+        String jsCode = String.format(
+                "!function(){var e=document.elementFromPoint(%d,%d);if(e){var t='%s',n=%d,o={bubbles:!0,cancelable:!0,composed:!0,clientX:%d,clientY:%d,button:n,buttons:0===n?1:1===n?4:2};e.dispatchEvent(new MouseEvent(t,o));var u='mousedown'===t?'pointerdown':'mouseup'===t?'pointerup':'pointermove',c={bubbles:!0,cancelable:!0,composed:!0,clientX:%d,clientY:%d,pointerType:'mouse',isPrimary:!0,button:n};e.dispatchEvent(new PointerEvent(u,c))}}();",
+                x, y, eventType, button, x, y, x, y
+        );
+        executeJavaScript(jsCode, "chrome://inline/event", 0);
+    }
+
+    private void executeTouchEventJS(String eventType, int x, int y) {
+        //(function() {
+        //    var el = document.elementFromPoint(%d, %d);
+        //    if (!el) return;
+        //    var touchEventType = '%s';
+        //    var touchPoint = new Touch({
+        //        identifier: Date.now(),
+        //        target: el,
+        //        clientX: %d,
+        //        clientY: %d,
+        //        pageX: %d,
+        //        pageY: %d,
+        //        screenX: %d,
+        //        screenY: %d,
+        //        radiusX: 2.5,
+        //        radiusY: 2.5,
+        //        rotationAngle: 0,
+        //        force: 0.5
+        //    });
+        //    var touchEvent = new TouchEvent(touchEventType, {
+        //        bubbles: true,
+        //        cancelable: true,
+        //        composed: true,
+        //        touches: [touchPoint],
+        //        targetTouches: [touchPoint],
+        //        changedTouches: [touchPoint]
+        //    });
+        //    el.dispatchEvent(touchEvent);
+        //    var primaryPointerType = touchEventType === 'touchstart' ? 'pointerdown' : (touchEventType === 'touchend' ? 'pointerup' : 'pointermove');
+        //    var pointerEventOptions = {
+        //        bubbles: true,
+        //        cancelable: true,
+        //        composed: true,
+        //        clientX: %d,
+        //        clientY: %d,
+        //        pointerType: 'touch',
+        //        isPrimary: true
+        //    };
+        //    el.dispatchEvent(new PointerEvent(primaryPointerType, pointerEventOptions));
+        //    if (primaryPointerType !== 'pointermove') {
+        //        el.dispatchEvent(new PointerEvent('pointermove', pointerEventOptions));
+        //    }
+        //})();
+        String jsCode = String.format(
+                "!function(){var e=document.elementFromPoint(%d,%d);if(e){var t='%s',n={identifier:Date.now(),target:e,clientX:%d,clientY:%d,pageX:%d,pageY:%d,screenX:%d,screenY:%d,radiusX:2.5,radiusY:2.5,rotationAngle:0,force:.5},o=new Touch(n),u=new TouchEvent(t,{bubbles:!0,cancelable:!0,composed:!0,touches:[o],targetTouches:[o],changedTouches:[o]});e.dispatchEvent(u);var c='touchstart'===t?'pointerdown':'touchend'===t?'pointerup':'pointermove',i={bubbles:!0,cancelable:!0,composed:!0,clientX:%d,clientY:%d,pointerType:'touch',isPrimary:!0};e.dispatchEvent(new PointerEvent(c,i)),'pointermove'!==c&&e.dispatchEvent(new PointerEvent('pointermove',i))}}();",
+                x, y, eventType, x, y, x, y, x, y, x, y
+        );
+        executeJavaScript(jsCode, "chrome://inline/event", 0);
+    }
+
 
     @Override
     public void close(boolean force) {
@@ -280,6 +459,7 @@ public class MapBrowserInstance extends CefBrowserOsr {
                 devToolsBrowser.close(force);
             }
         }
+        clickExecutor.shutdown();
         super.close(force);
     }
 }

@@ -1,5 +1,5 @@
 name: MapBrowser
-version: '1.0-beta2'
+version: '1.0-beta3'
 main: top.steve3184.mapbrowser.MapBrowser
 api-version: '1.20'
 prefix: MapBrowser

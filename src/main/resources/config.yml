@@ -7,7 +7,7 @@ jcef:
   # Default: (plguins)/MapBrowser/jcef-bundle
   custom-install-path: ""
   # Custom jcef-maven download mirror (for custom-builds)
-  mirror: "https://git.s3.fan/Steve3184/MapBrowser-jcefbuild/releases/download/latest/"
+  mirror: "https://github.com/Steve3184/mb_jcefbuild/releases/download/v1/"
   # Should jcef-maven check the JCEF binaries at startup?
   skip-download: false
 

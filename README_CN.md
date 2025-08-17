@@ -47,8 +47,7 @@
 2.  确保你已经安装了 [MapEngine](https://modrinth.com/plugin/mapengine) 插件。
 3.  将下载的 `MapBrowser-*-all.jar` 文件放入你服务器的 `plugins` 目录。
 4.  启动或重启服务器。
-5.  插件首次启动时，`jcef-maven` 将自动下载并安装适用于你服务器操作系统的自定义版本的 CEF，目前仅支持 `Windows amd64/i386` 和 `Linux amd64/arm64`。如果我们的自定义版本不可用，则会使用默认的 CEF。这个过程可能需要几分钟，并需要较好的网络连接。请耐心等待，并观察控制台日志。
-6. 如果自动安装的JCEF捆绑包不起作用，可以尝试在`config.yml`中设置`mirror: ""`并删除下载的JCEF捆绑包，最后重启服务器以使用默认版本。
+5.  插件首次启动时，`jcef-maven` 将自动下载并安装适用于你服务器操作系统的自定义版本的 CEF，目前仅支持 `Windows amd64/i386` 和 `Linux amd64/arm64`。如果我们的自定义版本不可用，则会自动禁用插件。这个过程可能需要几分钟，并需要较好的网络连接。请耐心等待，并观察控制台日志。
 
 ## 配置
 
@@ -64,7 +63,7 @@ jcef:
   # 默认: (plugins)/MapBrowser/jcef-bundle
   custom-install-path: ""
   # 自定义 jcef-maven 下载镜像（用于自定义构建）
-  mirror: "https://git.s3.fan/Steve3184/MapBrowser-jcefbuild/releases/download/latest/"
+  mirror: "https://github.com/Steve3184/mb_jcefbuild/releases/download/v1/"
   # jcef-maven 是否应在启动时检查 JCEF 二进制文件？
   skip-download: false
 
@@ -94,21 +93,22 @@ browser:
 
 ## 命令与权限
 
-| 命令 | 描述 | 用法 | 权限 |
-| --- | --- | --- | --- |
-| `/mb create` | 在指定位置创建一个新的浏览器屏幕。 | `/mb create <x> <y> <z> <url> [width] [height]` | `mapbrowser.command.create` |
-| `/mb list` | 列出所有当前活动的浏览器屏幕。 | `/mb list` | `mapbrowser.command.list` |
-| `/mb remove` | 移除一个指定的浏览器屏幕。 | `/mb remove <id>` | `mapbrowser.command.remove` |
-| `/mb modify` | 修改一个现有屏幕的属性。 | `/mb modify <id> <prop> [values...]` | `mapbrowser.command.modify` |
-| `├ url` | 更改屏幕加载的网址。 | `/mb modify <id> url <new_url>` | |
-| `├ devtools` | 开启或关闭开发者工具。 | `/mb modify <id> devtools <on\|off>` | |
-| `├ pos` | 移动浏览器屏幕。 | `/mb modify <id> pos <x> <y> <z>` | |
-| `├ size` | 更改浏览器屏幕的大小。 | `/mb modify <id> size <width> <height>` | |
-| `└ refresh` | 刷新浏览器页面。 | `/mb modify <id> refresh` | |
-| `/mb input` | 向指定的屏幕发送文本输入。 | `/mb input <id> <text...>` | `mapbrowser.command.input` |
-| `/mb keys` | 向指定的屏幕发送一个按键事件。 | `/mb keys <id> <key> <action>` | `mapbrowser.command.keys` |
-| `/mb executeJs` | 在指定的浏览器屏幕中执行自定义 JS 代码。 | `/mb executeJs <id> <script...>` | `mapbrowser.command.executejs` |
-| `/mb near` | 列出最近的浏览器屏幕的 ID。 | `/mb near` | `mapbrowser.command.near` |
+| 命令              | 描述                              | 用法                                              | 权限                             |
+|-----------------|---------------------------------|-------------------------------------------------|--------------------------------|
+| `/mb create`    | 在指定位置创建一个新的浏览器屏幕。               | `/mb create <x> <y> <z> <url> [width] [height]` | `mapbrowser.command.create`    |
+| `/mb list`      | 列出所有当前活动的浏览器屏幕。                 | `/mb list`                                      | `mapbrowser.command.list`      |
+| `/mb remove`    | 移除一个指定的浏览器屏幕。                   | `/mb remove <id>`                               | `mapbrowser.command.remove`    |
+| `/mb modify`    | 修改一个现有屏幕的属性。                    | `/mb modify <id> <prop> [values...]`            | `mapbrowser.command.modify`    |
+| `├ url`         | 更改屏幕加载的网址。                      | `/mb modify <id> url <new_url>`                 |                                |
+| `├ devtools`    | 开启或关闭开发者工具。                     | `/mb modify <id> devtools <on\|off>`            |                                |
+| `├ pos`         | 移动浏览器屏幕。                        | `/mb modify <id> pos <x> <y> <z>`               |                                |
+| `├ size`        | 更改浏览器屏幕的大小。                     | `/mb modify <id> size <width> <height>`         |                                |
+| `└ refresh`     | 刷新浏览器页面。                        | `/mb modify <id> refresh`                       |                                |
+| `└ scale`       | 设置浏览器页面的缩放。                     | `/mb modify <id> scale <newScale>`              |                                |
+| `/mb input`     | 向指定的屏幕发送文本输入。                   | `/mb input <id> <text...>`                      | `mapbrowser.command.input`     |
+| `/mb keys`      | 向指定的屏幕发送一个按键事件。                 | `/mb keys <id> <key> <action>`                  | `mapbrowser.command.keys`      |
+| `/mb executeJs` | 在指定的浏览器屏幕中执行自定义 JS 代码或 JS 片段文件。 | `/mb executeJs <id> <jsCode\|snippet.js>`       | `mapbrowser.command.executejs` |
+| `/mb near`      | 列出最近的浏览器屏幕的 ID。                 | `/mb near`                                      | `mapbrowser.command.near`      |
 
 **`/mb keys` 的按键动作:**
 *   `pressDown`: 模拟按下按键。

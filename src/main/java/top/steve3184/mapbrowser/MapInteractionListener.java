@@ -42,8 +42,9 @@ public record MapInteractionListener(MapBrowser plugin) implements Listener {
             case MapClickType.RIGHT_CLICK -> MouseEvent.BUTTON3; // Right-click
             default -> MouseEvent.BUTTON1;          // Left-click (or any other type)
         };
-
+        int x = event.x() * browserDisplay.getScale();
+        int y = event.y() * browserDisplay.getScale();
         // Send the translated click event to the CEF browser instance.
-        browser.sendMouseClick(event.x(), event.y(), awtButtonType);
+        browser.sendMouseClick(x, y, awtButtonType);
     }
 }

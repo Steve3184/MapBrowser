@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/mapbrowser.main.iml" filepath="$PROJECT_DIR$/.idea/modules/mapbrowser.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/MapBrowser.main.iml" filepath="$PROJECT_DIR$/.idea/modules/MapBrowser.main.iml" />
     </modules>
   </component>
 </project>

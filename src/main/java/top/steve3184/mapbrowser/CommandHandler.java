@@ -13,6 +13,9 @@ import org.bukkit.util.StringUtil;
 import org.cef.browser.MapBrowserInstance;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,30 +34,47 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String @NotNull [] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by a player.", NamedTextColor.RED));
-            return true;
-        }
-        if (!player.hasPermission("mapbrowser.command.base")) {
-            player.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
-            return true;
-        }
+        // Player check is now handled within each specific command that requires it.
+
         if (args.length == 0) {
-            sendHelpMessage(player);
+            sendHelpMessage(sender);
             return true;
         }
 
         String subCommand = args[0].toLowerCase();
+        // A check to ensure only players can use commands that require a player instance
+        if (!(sender instanceof Player) && Arrays.asList("create", "list", "remove", "modify", "near", "executeJs").contains(subCommand)) {
+            sender.sendMessage(Component.text("This command can only be used by a player.", NamedTextColor.RED));
+            return true;
+        }
+
         switch (subCommand) {
-            case "create" -> handleCreateCommand(player, args);
-            case "list" -> handleListCommand(player);
-            case "remove" -> handleRemoveCommand(player, args);
-            case "modify" -> handleModifyCommand(player, args);
-            case "input" -> handleInputCommand(player, args);
-            case "keys" -> handleKeysCommand(player, args);
-            case "near" -> handleNearCommand(player);
-            case "executejs" -> handleExecuteJsCommand(player, args);
-            default -> sendHelpMessage(player);
+            // Commands that require a player
+            case "create" -> {
+                assert sender instanceof Player;
+                handleCreateCommand((Player) sender, args);
+            }
+            case "list" -> {
+                assert sender instanceof Player;
+                handleListCommand((Player) sender);
+            }
+            case "remove" -> {
+                assert sender instanceof Player;
+                handleRemoveCommand((Player) sender, args);
+            }
+            case "modify" -> {
+                assert sender instanceof Player;
+                handleModifyCommand((Player) sender, args);
+            }
+            case "near" -> {
+                assert sender instanceof Player;
+                handleNearCommand((Player) sender);
+            }
+            // Commands that can be run by console
+            case "input" -> handleInputCommand(sender, args);
+            case "keys" -> handleKeysCommand(sender, args);
+            case "executejs" -> handleExecuteJsCommand(sender, args);
+            default -> sendHelpMessage(sender);
         }
         return true;
     }
@@ -94,7 +114,7 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
 
         if (subCommand.equals("modify")) {
             if (args.length == 3) {
-                return StringUtil.copyPartialMatches(args[2], Arrays.asList("url", "devtools", "pos", "size", "refresh"), completions);
+                return StringUtil.copyPartialMatches(args[2], Arrays.asList("url", "devtools", "pos", "size", "refresh", "scale"), completions);
             }
             if (args.length == 4 && args[2].equalsIgnoreCase("devtools")) {
                 return StringUtil.copyPartialMatches(args[3], Arrays.asList("on", "off"), completions);
@@ -118,6 +138,9 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 if (args.length == 6) {
                     return StringUtil.copyPartialMatches(args[5], List.of(String.valueOf(targetBlock.getZ())), completions);
                 }
+            }
+            if (args.length == 4 && args[2].equalsIgnoreCase("scale")) {
+                return StringUtil.copyPartialMatches(args[3], List.of("newScale"), completions);
             }
         }
 
@@ -156,7 +179,6 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
             }
 
             Location location = new Location(player.getWorld(), x, y, z);
-            // Call the service and get the created display back
             MapBrowserDisplay newDisplay = displayService.createAndInitializeDisplay(player, url, location, width, height);
 
             if (newDisplay != null) {
@@ -214,7 +236,6 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 return;
             }
 
-            // Clean up resources associated with the display.
             displayInfo.getViewerDisplays().keySet().forEach(uuid -> plugin.getDisplayLookup().remove(uuid));
             displayInfo.cleanup();
 
@@ -247,11 +268,11 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
         String property = args[2].toLowerCase();
 
         switch (property) {
-            case "refresh":
+            case "refresh" -> {
                 browser.reload();
                 player.sendMessage(Component.text("Refreshed display #" + display.getId(), NamedTextColor.GREEN));
-                break;
-            case "url":
+            }
+            case "url" -> {
                 if (args.length != 4) {
                     player.sendMessage(Component.text("Usage: /mb modify " + display.getId() + " url <new_url>", NamedTextColor.RED));
                     return;
@@ -260,19 +281,18 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 display.getBrowser().loadURL(newUrl);
                 display.setUrl(newUrl);
                 player.sendMessage(Component.text("Set URL for display #" + display.getId() + " to " + newUrl, NamedTextColor.GREEN));
-                break;
-
-            case "devtools":
+            }
+            case "devtools" -> {
                 if (args.length != 4) {
                     player.sendMessage(Component.text("Usage: /mb modify " + display.getId() + " devtools <on|off>", NamedTextColor.RED));
                     return;
                 }
                 boolean open = args[3].equalsIgnoreCase("on");
-                display.getBrowser().setDevTools(open);
-                player.sendMessage(Component.text("Set DevTools for display #" + display.getId() + " to " + (open ? "ON" : "OFF"), NamedTextColor.GREEN));
-                break;
-
-            case "pos":
+//                display.getBrowser().setDevTools(open);
+//                player.sendMessage(Component.text("Set DevTools for display #" + display.getId() + " to " + (open ? "ON" : "OFF"), NamedTextColor.GREEN));
+                player.sendMessage(Component.text("Devtools is not usable now, you can try to using remote debugging.", NamedTextColor.RED));
+            }
+            case "pos" -> {
                 if (args.length != 6) {
                     player.sendMessage(Component.text("Usage: /mb modify " + display.getId() + " pos <x> <y> <z>", NamedTextColor.RED));
                     return;
@@ -287,9 +307,8 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 } catch (NumberFormatException e) {
                     player.sendMessage(Component.text("Invalid coordinates provided.", NamedTextColor.RED));
                 }
-                break;
-
-            case "size":
+            }
+            case "size" -> {
                 if (args.length != 5) {
                     player.sendMessage(Component.text("Usage: /mb modify " + display.getId() + " size <width> <height>", NamedTextColor.RED));
                     return;
@@ -307,10 +326,26 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
                 } catch (NumberFormatException e) {
                     player.sendMessage(Component.text("Invalid width or height.", NamedTextColor.RED));
                 }
-                break;
-
-            default:
-                player.sendMessage(Component.text("Unknown property. Use: url, devtools, pos, size.", NamedTextColor.RED));
+            }
+            case "scale" -> {
+                if (args.length != 4) {
+                    player.sendMessage(Component.text("Usage: /mb modify " + display.getId() + " scale <newScale>", NamedTextColor.RED));
+                    return;
+                }
+                try {
+                    int newScale = Integer.parseInt(args[3]);
+                    if (newScale < 1) {
+                        player.sendMessage(Component.text("Scale must >=1.", NamedTextColor.RED));
+                        return;
+                    }
+                    player.sendMessage(Component.text("Setting scale of display #" + display.getId() + "...", NamedTextColor.YELLOW));
+                    displayService.scaleDisplay(player, display, newScale);
+                    player.sendMessage(Component.text("Display #" + display.getId() + " scaled successfully.", NamedTextColor.GREEN));
+                } catch (NumberFormatException e) {
+                    player.sendMessage(Component.text("Invalid scale.", NamedTextColor.RED));
+                }
+            }
+            default -> player.sendMessage(Component.text("Unknown property. Use: url, devtools, pos, size.", NamedTextColor.RED));
         }
     }
 
@@ -337,92 +372,115 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
     }
 
 
-    private void handleInputCommand(Player player, String[] args) {
-        if (!player.hasPermission("mapbrowser.command.input")) {
-            player.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+    private void handleInputCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("mapbrowser.command.input")) {
+            sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return;
         }
 
         if (args.length < 3) {
-            player.sendMessage(Component.text("Usage: /mb input <id> <text...>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Usage: /mb input <id> <text...>", NamedTextColor.RED));
             return;
         }
 
-        MapBrowserDisplay display = getDisplayById(args[1], player);
+        MapBrowserDisplay display = getDisplayById(args[1], sender);
         if (display == null) return;
 
         if (display.getBrowser() == null) {
-            player.sendMessage(Component.text("The browser for display #" + display.getId() + " is not available.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("The browser for display #" + display.getId() + " is not available.", NamedTextColor.RED));
             return;
         }
 
         String textToInput = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
         display.getBrowser().inputText(textToInput);
-        player.sendMessage(Component.text("Sent input to display #" + display.getId(), NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("Sent input to display #" + display.getId(), NamedTextColor.GREEN));
     }
 
-    private void handleKeysCommand(Player player, String[] args) {
-        if (!player.hasPermission("mapbrowser.command.keys")) {
-            player.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+    private void handleKeysCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("mapbrowser.command.keys")) {
+            sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return;
         }
         if (args.length != 4) {
-            player.sendMessage(Component.text("Usage: /mb keys <id> <keyName> <pressDown|pressUp|click>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Usage: /mb keys <id> <keyName> <pressDown|pressUp|click>", NamedTextColor.RED));
             return;
         }
 
-        MapBrowserDisplay display = getDisplayById(args[1], player);
+        MapBrowserDisplay display = getDisplayById(args[1], sender);
         if (display == null || display.getBrowser() == null) return;
 
         String keyName = args[2];
         Integer keyCode = KeyMap.getKeyCode(keyName);
         if (keyCode == null) {
-            player.sendMessage(Component.text("Unknown key: " + keyName, NamedTextColor.RED));
-            player.sendMessage(Component.text("Use Tab-complete to see available keys.", NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text("Unknown key: " + keyName, NamedTextColor.RED));
+            sender.sendMessage(Component.text("Use Tab-complete to see available keys.", NamedTextColor.YELLOW));
             return;
         }
 
         String action = args[3].toLowerCase();
         if (!Arrays.asList("pressdown", "pressup", "click").contains(action)) {
-            player.sendMessage(Component.text("Invalid action. Use: pressDown, pressUp, or click.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Invalid action. Use: pressDown, pressUp, or click.", NamedTextColor.RED));
             return;
         }
         display.getBrowser().handleKeyAction(keyCode, action);
-        player.sendMessage(Component.text("Sent key '" + keyName.toUpperCase() + "' (" + action + ") to display #" + display.getId(), NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("Sent key '" + keyName.toUpperCase() + "' (" + action + ") to display #" + display.getId(), NamedTextColor.GREEN));
     }
 
     /**
      * Handles the 'executeJs' subcommand to run JavaScript on a display.
      */
-    private void handleExecuteJsCommand(Player player, String[] args) {
-        if (!player.hasPermission("mapbrowser.command.executejs")) {
-            player.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
+    private void handleExecuteJsCommand(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("mapbrowser.command.executejs")) {
+            sender.sendMessage(Component.text("You do not have permission to use this command.", NamedTextColor.RED));
             return;
         }
         if (args.length < 3) {
-            player.sendMessage(Component.text("Usage: /mb executeJs <id> <javascript_code>", NamedTextColor.RED));
+            sender.sendMessage(Component.text("Usage: /mb executeJs <id> <code|path.js>", NamedTextColor.RED));
             return;
         }
 
-        MapBrowserDisplay display = getDisplayById(args[1], player);
-        if (display == null) return; // Message is sent by getDisplayById
+        MapBrowserDisplay display = getDisplayById(args[1], sender);
+        if (display == null) return;
 
         MapBrowserInstance browser = display.getBrowser();
         if (browser == null) {
-            player.sendMessage(Component.text("The browser for display #" + display.getId() + " is not available.", NamedTextColor.RED));
+            sender.sendMessage(Component.text("The browser for display #" + display.getId() + " is not available.", NamedTextColor.RED));
             return;
         }
 
-        // Combine all arguments after the ID into a single script string
-        String scriptToExecute = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        String potentialPath = args[2];
+        String scriptToExecute;
 
-        // Execute the JavaScript. The URL and line number can be null/0 for simple execution.
+        // Check if the input is a script path
+        if (potentialPath.endsWith(".js") && !potentialPath.startsWith(".")) {
+            // Rejoin arguments in case the file path has spaces (though it's bad practice, this handles it)
+            String fullPath = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+            File scriptFile = new File(new File(plugin.getDataFolder(), "snippets"), fullPath);
+
+            if (!scriptFile.exists()) {
+                sender.sendMessage(Component.text("Error: Script file not found: " + fullPath, NamedTextColor.RED));
+                return;
+            }
+
+            try {
+                scriptToExecute = Files.readString(scriptFile.toPath());
+                sender.sendMessage(Component.text("Executing script from file: " + fullPath, NamedTextColor.YELLOW));
+            } catch (IOException e) {
+                sender.sendMessage(Component.text("Error reading script file: " + e.getMessage(), NamedTextColor.RED));
+                plugin.getLogger().severe("Could not read JS snippet: " + fullPath);
+                e.printStackTrace();
+                return;
+            }
+        } else {
+            // Treat as raw JavaScript code
+            scriptToExecute = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+        }
+
         browser.executeJavaScript(scriptToExecute, null, 0);
-
-        player.sendMessage(Component.text("Executed JavaScript on display #" + display.getId(), NamedTextColor.GREEN));
+        sender.sendMessage(Component.text("Executed JavaScript on display #" + display.getId(), NamedTextColor.GREEN));
     }
 
-    private void sendHelpMessage(Player player) {
+    private void sendHelpMessage(CommandSender player) {
         player.sendMessage(Component.text("--- MapBrowser Help ---", NamedTextColor.GOLD));
         player.sendMessage(Component.text("/mb create <x> <y> <z> <url> [w] [h]", NamedTextColor.AQUA).append(Component.text(" - Create a browser display.", NamedTextColor.WHITE)));
         player.sendMessage(Component.text("/mb list", NamedTextColor.AQUA).append(Component.text(" - List all active displays.", NamedTextColor.WHITE)));
@@ -431,10 +489,10 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
         player.sendMessage(Component.text("/mb input <id> <text>", NamedTextColor.AQUA).append(Component.text(" - Send text input to a display.", NamedTextColor.WHITE)));
         player.sendMessage(Component.text("/mb keys <id> <key> <action>", NamedTextColor.AQUA).append(Component.text(" - Send a key event to a display.", NamedTextColor.WHITE)));
         player.sendMessage(Component.text("/mb near", NamedTextColor.AQUA).append(Component.text(" - Find the nearest display.", NamedTextColor.WHITE)));
-        player.sendMessage(Component.text("/mb executeJs <id> <script>", NamedTextColor.AQUA).append(Component.text(" - Execute JavaScript on a display.", NamedTextColor.WHITE)));
+        player.sendMessage(Component.text("/mb executeJs <id> <code|path.js>", NamedTextColor.AQUA).append(Component.text(" - Execute JavaScript on a display.", NamedTextColor.WHITE)));
     }
 
-    private MapBrowserDisplay getDisplayById(String idString, Player player) {
+    private MapBrowserDisplay getDisplayById(String idString, CommandSender player) {
         try {
             int id = Integer.parseInt(idString);
             MapBrowserDisplay display = plugin.getActiveDisplays().get(id);

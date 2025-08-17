@@ -47,8 +47,7 @@ A powerful Spigot/Paper plugin that brings the power of a modern web browser int
 2.  Ensure you have already installed the [MapEngine](https://modrinth.com/plugin/mapengine) plugin.
 3.  Place the downloaded `MapBrowser-*-all.jar` file into your server's `plugins` directory.
 4.  Start or restart your server.
-5.  On the first launch, `jcef-maven` will automatically download and install a custom version of CEF suitable for your server's operating system. Currently, only `Windows amd64/i386` and `Linux amd64/arm64` are supported. If our custom version is not available, the default CEF will be used. This process may take a few minutes and requires a good network connection. Please be patient and monitor the console logs.
-6. If the automatically installed JCEF bundle does not work, you can try setting `mirror: ""` in `config.yml` and deleting the downloaded JCEF bundle, and finally restarting the server to use the default version.
+5.  On the first launch, `jcef-maven` will automatically download and install a custom version of CEF suitable for your server's operating system. Currently, only `Windows amd64/i386` and `Linux amd64/arm64` are supported. If our custom version is not available, MapBrowser will be disabled automatically. This process may take a few minutes and requires a good network connection. Please be patient and monitor the console logs.
 
 ## Configuration
 
@@ -64,7 +63,7 @@ jcef:
   # Default: (plugins)/MapBrowser/jcef-bundle
   custom-install-path: ""
   # Custom jcef-maven download mirror (for custom-builds)
-  mirror: "https://git.s3.fan/Steve3184/MapBrowser-jcefbuild/releases/download/latest/"
+  mirror: "https://github.com/Steve3184/mb_jcefbuild/releases/download/v1/"
   # Should jcef-maven check the JCEF binaries at startup?
   skip-download: false
 
@@ -94,21 +93,22 @@ browser:
 
 ## Commands and Permissions
 
-| Command | Description | Usage                                           | Permission |
-| --- | --- |-------------------------------------------------| --- |
-| `/mb create` | Creates a new browser screen at the specified location. | `/mb create <x> <y> <z> <url> [width] [height]` | `mapbrowser.command.create` |
-| `/mb list` | Lists all currently active browser screens. | `/mb list`                                      | `mapbrowser.command.list` |
-| `/mb remove` | Removes a specified browser screen. | `/mb remove <id>`                               | `mapbrowser.command.remove` |
-| `/mb modify` | Modifies the properties of an existing screen. | `/mb modify <id> <prop> [values...]`            | `mapbrowser.command.modify` |
-| `├ url` | Changes the URL loaded by the screen. | `/mb modify <id> url <new_url>`                 | |
-| `├ devtools` | Toggles the developer tools on or off. | `/mb modify <id> devtools <on\|off>`            | |
-| `├ pos` | Moves the browser screen. | `/mb modify <id> pos <x> <y> <z>`               | |
-| `├ size` | Changes the size of the browser screen. | `/mb modify <id> size <width> <height>`         | |
-| `└ refresh` | Refreshes the browser page. | `/mb modify <id> refresh`                       | |
-| `/mb input` | Sends text input to the specified screen. | `/mb input <id> <text...>`                      | `mapbrowser.command.input` |
-| `/mb keys` | Sends a key event to the specified screen. | `/mb keys <id> <key> <action>`                  | `mapbrowser.command.keys` |
-| `/mb executeJs` | Executes custom JS code in the specified browser screen. | `/mb executeJs <id> <js...>`                    | `mapbrowser.command.executejs` |
-| `/mb near` | Lists the ID of the nearest browser screen. | `/mb near`                                      | `mapbrowser.command.near` |
+| Command         | Description                                                              | Usage                                           | Permission                     |
+|-----------------|--------------------------------------------------------------------------|-------------------------------------------------|--------------------------------|
+| `/mb create`    | Creates a new browser screen at the specified location.                  | `/mb create <x> <y> <z> <url> [width] [height]` | `mapbrowser.command.create`    |
+| `/mb list`      | Lists all currently active browser screens.                              | `/mb list`                                      | `mapbrowser.command.list`      |
+| `/mb remove`    | Removes a specified browser screen.                                      | `/mb remove <id>`                               | `mapbrowser.command.remove`    |
+| `/mb modify`    | Modifies the properties of an existing screen.                           | `/mb modify <id> <prop> [values...]`            | `mapbrowser.command.modify`    |
+| `├ url`         | Changes the URL loaded by the screen.                                    | `/mb modify <id> url <new_url>`                 |                                |
+| `├ devtools`    | Toggles the developer tools on or off.                                   | `/mb modify <id> devtools <on\|off>`            |                                |
+| `├ pos`         | Moves the browser screen.                                                | `/mb modify <id> pos <x> <y> <z>`               |                                |
+| `├ size`        | Changes the size of the browser screen.                                  | `/mb modify <id> size <width> <height>`         |                                |
+| `└ refresh`     | Refreshes the browser page.                                              | `/mb modify <id> refresh`                       |                                |
+| `└ scale`       | Setting the scale of browser page.                                       | `/mb modify <id> scale <newScale>`              |                                |
+| `/mb input`     | Sends text input to the specified screen.                                | `/mb input <id> <text...>`                      | `mapbrowser.command.input`     |
+| `/mb keys`      | Sends a key event to the specified screen.                               | `/mb keys <id> <key> <action>`                  | `mapbrowser.command.keys`      |
+| `/mb executeJs` | Executes custom JS code or a JS snippet in the specified browser screen. | `/mb executeJs <id> <jsCode\|snippet.js>`       | `mapbrowser.command.executejs` |
+| `/mb near`      | Lists the ID of the nearest browser screen.                              | `/mb near`                                      | `mapbrowser.command.near`      |
 
 **Key Actions for `/mb keys`:**
 *   `pressDown`: Simulates pressing a key down.

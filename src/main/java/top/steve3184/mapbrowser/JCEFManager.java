@@ -13,6 +13,8 @@ import org.cef.browser.MapBrowserInstance;
 import org.cef.callback.CefContextMenuParams;
 import org.cef.callback.CefMenuModel;
 import org.cef.handler.CefContextMenuHandlerAdapter;
+import org.cef.handler.CefLifeSpanHandlerAdapter;
+import org.cef.handler.CefRequestHandlerAdapter;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -52,7 +54,7 @@ public class JCEFManager {
         // --- Configure JCEF Download Mirror ---
         String mirrorBaseUrl = config.getJcefMirror();
         // Use custom mirror only if the URL is provided AND the platform is supported.
-        if (mirrorBaseUrl != null && !mirrorBaseUrl.trim().isEmpty() && platformIdentifier != null) {
+        if (mirrorBaseUrl != null && !mirrorBaseUrl.trim().isEmpty() && platformIdentifier != null && !config.getIsSkipDownload()) {
             if (!mirrorBaseUrl.endsWith("/")) {
                 mirrorBaseUrl += "/";
             }
@@ -62,23 +64,35 @@ public class JCEFManager {
         } else {
             // Fallback to default repository if no mirror is set or platform is unsupported.
             if (platformIdentifier == null) {
-                LOGGER.warning("Unsupported platform detected. Falling back to the default JCEF download repository.");
+                LOGGER.warning("Unsupported platform detected.");
+                throw new UnsupportedPlatformException("","");
             }
             LOGGER.info("Using default JCEF download repository.");
         }
 
         // --- Configure JCEF Installation Path ---
         String customPath = config.getCustomJcefPath();
+
         if (customPath != null && !customPath.trim().isEmpty()) {
             File customDir = new File(customPath);
             if (customDir.exists() && customDir.isDirectory()) {
+                if (new File(customPath,"install.lock").exists()) {
+                    builder.setSkipInstallation(true);
+                }
                 builder.setInstallDir(customDir);
                 LOGGER.info("Using custom JCEF path: " + customPath);
             } else {
                 LOGGER.warning("Invalid custom JCEF path: " + customPath + ". Falling back to default.");
+                if (new File(dataFolder,"jcef-bundle/install.lock").exists()) {
+                    builder.setSkipInstallation(true);
+                }
+                builder.setInstallDir(customDir);
                 builder.setInstallDir(new File(dataFolder, "jcef-bundle"));
             }
         } else {
+            if (new File(dataFolder,"jcef-bundle/install.lock").exists()) {
+                builder.setSkipInstallation(true);
+            }
             builder.setInstallDir(new File(dataFolder, "jcef-bundle"));
             LOGGER.info("Using default JCEF installation path.");
         }
@@ -156,6 +170,20 @@ public class JCEFManager {
             @Override
             public void onBeforeContextMenu(CefBrowser browser, CefFrame frame, CefContextMenuParams params, CefMenuModel model) {
                 model.clear();
+            }
+        });
+        this.cefClient.addRequestHandler(new CefRequestHandlerAdapter() {
+            @Override
+            public boolean onOpenURLFromTab(CefBrowser browser, CefFrame frame, String target_url, boolean user_gesture) {
+                browser.loadURL(target_url);
+                return true;
+            }
+        });
+        this.cefClient.addLifeSpanHandler(new CefLifeSpanHandlerAdapter() {
+            @Override
+            public boolean onBeforePopup(CefBrowser browser, CefFrame frame, String target_url, String target_frame_name) {
+                browser.loadURL(target_url);
+                return true;
             }
         });
     }

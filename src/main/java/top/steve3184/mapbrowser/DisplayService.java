@@ -206,8 +206,8 @@ public class DisplayService {
 
             // 3. Resize browser on AWT thread
             IMapDisplay tempDisplay = mapEngine.displayProvider().createBasic(display.getCornerA(), display.getCornerB(), display.getFacing());
-            final int newPixelWidth = tempDisplay.pixelWidth();
-            final int newPixelHeight = tempDisplay.pixelHeight();
+            final int newPixelWidth = tempDisplay.pixelWidth() * display.getScale();
+            final int newPixelHeight = tempDisplay.pixelHeight() * display.getScale();
             tempDisplay.destroy();
             SwingUtilities.invokeLater(() -> browser.resize(newPixelWidth, newPixelHeight));
 
@@ -216,6 +216,15 @@ public class DisplayService {
             PlayerDisplay newPlayerDisplay = createDisplayForPlayer(player, display);
             display.getViewerDisplays().put(player.getUniqueId(), newPlayerDisplay);
             plugin.getDisplayLookup().put(newPlayerDisplay.mapDisplay(), display);
+        }
+    }
+
+    public void scaleDisplay(Player player, MapBrowserDisplay display, int newScale) {
+        synchronized (display.getViewerDisplays()) {
+            final MapBrowserInstance browser = display.getBrowser();
+            if (browser == null) return;
+            display.setScale(newScale);
+            SwingUtilities.invokeLater(() -> browser.resize(display.getWidth() * 128 * newScale, display.getHeight() * 128 * newScale));
         }
     }
 
@@ -236,6 +245,44 @@ public class DisplayService {
         plugin.getDisplayLookup().clear();
     }
 
+    /**
+     * Scales down pixel data by a given integer factor using the nearest-neighbor (top-left) method.
+     *
+     * @param originalPixelData The original pixel data array from the browser frame.
+     * @param originalWidth     The width of the original frame.
+     * @param originalHeight    The height of the original frame.
+     * @param scale             The integer scaling factor. For example, a scale of 2 will reduce the
+     *                          image dimensions by half (e.g., 256x256 becomes 128x128). Must be 1 or greater.
+     * @return A new integer array containing the scaled-down pixel data.
+     * @throws IllegalArgumentException if the scale factor is less than 1 or if the input data
+     *                                  length doesn't match the specified dimensions.
+     */
+    public static int[] scalePixelData(int[] originalPixelData, int originalWidth, int originalHeight, int scale) {
+        if (scale < 1) {
+            throw new IllegalArgumentException("Scale factor must be 1 or greater.");
+        }
+        if (originalPixelData.length != originalWidth * originalHeight) {
+            throw new IllegalArgumentException("Original pixel data array length does not match the provided dimensions.");
+        }
+        if (scale == 1) {
+            return originalPixelData.clone();
+        }
+        int newWidth = originalWidth / scale;
+        int newHeight = originalHeight / scale;
+
+        int[] scaledPixelData = new int[newWidth * newHeight];
+        for (int y = 0; y < newHeight; y++) {
+            for (int x = 0; x < newWidth; x++) {
+                int originalX = x * scale;
+                int originalY = y * scale;
+                int originalIndex = originalY * originalWidth + originalX;
+                int scaledIndex = y * newWidth + x;
+                scaledPixelData[scaledIndex] = originalPixelData[originalIndex];
+            }
+        }
+        return scaledPixelData;
+    }
+
     private void startRenderLoop(MapBrowserDisplay displayInfo) {
         final MapBrowserInstance browser = displayInfo.getBrowser();
         if (browser == null) {
@@ -246,16 +293,19 @@ public class DisplayService {
             @Override
             public void run() {
                 if (displayInfo.getBrowser() == null) { this.cancel(); return; }
-                int[] pixelData = browser.getAndUpdatePixelData();
-                if (pixelData != null) {
+                int[] tmpPixelData = browser.getAndUpdatePixelData();
+                if (tmpPixelData != null) {
+                    int[] pixelData = scalePixelData(tmpPixelData, browser.getPixelWidth(), browser.getPixelHeight(), displayInfo.getScale());
                     displayInfo.setLastPixelData(pixelData);
                     // Synchronize when accessing the viewer list to avoid concurrent modification
                     synchronized (displayInfo.getViewerDisplays()) {
                         for (PlayerDisplay playerDisplay : displayInfo.getViewerDisplays().values()) {
                             IDrawingSpace drawingSpace = playerDisplay.drawingSpace();
                             if (drawingSpace != null) {
-                                drawingSpace.pixels(pixelData, 0, 0, browser.getPixelWidth(), browser.getPixelHeight());
-                                drawingSpace.flush();
+                                try {
+                                    drawingSpace.pixels(pixelData, 0, 0, displayInfo.getWidth() * 128, displayInfo.getHeight() * 128);
+                                    drawingSpace.flush();
+                                } catch (ArrayIndexOutOfBoundsException ignored) {}
                             }
                         }
                     }
@@ -267,14 +317,19 @@ public class DisplayService {
 
     public void calculateAndStoreGeometry(Player viewer, MapBrowserDisplay displayInfo) {
         Vector direction = viewer.getLocation().getDirection().setY(0).normalize();
-        Vector right = direction.getCrossProduct(new Vector(0, 1, 0)).normalize();
-        Vector down = new Vector(0, -1, 0);
-        Location corner1 = displayInfo.getLocation();
-        BlockVector cornerA = corner1.toVector().toBlockVector();
-        Location corner2Loc = corner1.clone().add(right.clone().multiply(displayInfo.getWidth() - 1)).add(down.clone().multiply(displayInfo.getHeight() - 1));
-        BlockVector cornerB = corner2Loc.toVector().toBlockVector();
+        Vector rightVec = direction.getCrossProduct(new Vector(0, 1, 0)).normalize();
+        Vector downVec = new Vector(0, -1, 0);
+        BlockVector rightStep = new BlockVector(
+                Math.round(rightVec.getX()),
+                Math.round(rightVec.getY()),
+                Math.round(rightVec.getZ())
+        );
+        BlockVector downStep = new BlockVector(0, -1, 0);
+        BlockVector cornerA = displayInfo.getLocation().toVector().toBlockVector();
+        BlockVector totalOffset = rightStep.clone().multiply(displayInfo.getWidth() - 1)
+                .add(downStep.clone().multiply(displayInfo.getHeight() - 1)).toBlockVector();
+        BlockVector cornerB = cornerA.clone().add(totalOffset).toBlockVector();
         BlockFace facing = viewer.getFacing().getOppositeFace();
-
         displayInfo.setCornerA(cornerA);
         displayInfo.setCornerB(cornerB);
         displayInfo.setFacing(facing);
@@ -292,8 +347,8 @@ public class DisplayService {
         drawingSpace.ctx().converter(Converter.FLOYD_STEINBERG);
 
         int[] lastFrame = sourceDisplay.getLastPixelData();
-        if (lastFrame != null && sourceDisplay.getBrowser() != null) {
-            drawingSpace.pixels(lastFrame, 0, 0, sourceDisplay.getBrowser().getPixelWidth(), sourceDisplay.getBrowser().getPixelHeight());
+        if (lastFrame != null && sourceDisplay.getBrowser() != null && lastFrame.length == sourceDisplay.getWidth() * sourceDisplay.getHeight() * 128 * 128) {
+            drawingSpace.pixels(lastFrame, 0, 0, sourceDisplay.getWidth() * 128, sourceDisplay.getHeight() * 128);
             drawingSpace.flush();
         }
 
