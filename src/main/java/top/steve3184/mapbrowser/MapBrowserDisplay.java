@@ -29,9 +29,7 @@ public class MapBrowserDisplay {
 
     // --- Browser & Rendering Components ---
     private MapBrowserInstance browser; // The underlying CEF browser instance.
-    private IDrawingSpace drawingSpace; // The MapEngine surface used for drawing pixels.
     private BukkitTask renderTask; // The scheduled task that copies pixels from the browser to the map.
-    private IMapDisplay masterMapDisplay; // The core, server-side MapEngine display.
 
     // --- Player-Specific Visuals ---
     // A map of client-side displays, one for each player currently viewing.

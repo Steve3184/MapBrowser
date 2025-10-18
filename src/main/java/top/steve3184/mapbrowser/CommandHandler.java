@@ -2,6 +2,7 @@ package top.steve3184.mapbrowser;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -179,14 +180,16 @@ public class CommandHandler implements CommandExecutor, TabCompleter {
             }
 
             Location location = new Location(player.getWorld(), x, y, z);
-            MapBrowserDisplay newDisplay = displayService.createAndInitializeDisplay(player, url, location, width, height);
-
-            if (newDisplay != null) {
-                player.sendMessage(Component.text("Successfully created map display #", NamedTextColor.GREEN)
-                        .append(Component.text(newDisplay.getId(), NamedTextColor.WHITE)));
-            } else {
-                player.sendMessage(Component.text("Failed to create map display.", NamedTextColor.RED));
-            }
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                player.sendMessage(Component.text("Creating map display...", NamedTextColor.YELLOW));
+                MapBrowserDisplay newDisplay = displayService.createAndInitializeDisplay(player, url, location, width, height);
+                if (newDisplay != null) {
+                    player.sendMessage(Component.text("Successfully created map display #", NamedTextColor.GREEN)
+                            .append(Component.text(newDisplay.getId(), NamedTextColor.WHITE)));
+                } else {
+                    player.sendMessage(Component.text("Failed to create map display.", NamedTextColor.RED));
+                }
+            });
         } catch (NumberFormatException e) {
             player.sendMessage(Component.text("Invalid number format for coordinates, width, or height.", NamedTextColor.RED));
         }
